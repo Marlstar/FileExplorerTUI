@@ -15,6 +15,7 @@ use ratatui::{
 };
 
 use std::io::{self, stdout};
+use std::fs::{self, File};
 
 use color_eyre::{
     eyre::{bail, WrapErr},
@@ -24,24 +25,54 @@ use color_eyre::{
 
 mod tui;
 mod errors;
-mod frontend;
-mod backend;
+mod frontend; use frontend::*;
+mod backend; use backend::*;
 
 pub const APP_TITLE: &str = " File Explorer ";
+pub const DEFAULT_FOLDER: &str = "C:/users/marle";
 
+fn main() {
+    let dirs = DirUtils::dirsFromPath(String::from(DEFAULT_FOLDER)).expect("failed to get dirs");
+    let path = DirUtils::pathFromDirs(&dirs);
+    println!("{:?}\n{}", dirs, path)
 
-fn main() -> Result<()> {
+}
+fn main_() -> Result<()> {
     errors::install_hooks()?;
-    let mut terminal = tui::init()?;
-    let app_result = App::default().run(&mut terminal);
-    tui::restore()?;
 
+    let mut app = match App::new() {
+        Ok(a) => a,
+        Err(_) => panic!("failed to create app")
+    };
+    let app_result: Result<()> = app.runFrontend();
     return app_result;
 }
 
 
-#[derive(Debug, Default)]
 pub struct App {
-    counter: isize,
-    exit: bool
+    pub terminal: tui::Tui,
+    frontend: AppFrontend,
+    backend: AppBackend
+}
+impl App {
+    pub fn new() -> Result<App, ()> {
+        let a = App {
+            terminal: match tui::init() {
+                Ok(a) => a,
+                Err(_) => return Err(())
+            },
+            frontend: AppFrontend::new(),
+            backend: AppBackend::new()
+        };
+        Ok(a)
+    }
+}
+
+impl App {
+    pub fn runFrontend(&mut self) -> Result<()> {
+        let app_result = self.frontend.run(&mut self.terminal);
+        let _ = tui::restore();
+
+        return app_result;
+    }
 }

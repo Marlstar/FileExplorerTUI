@@ -1,6 +1,21 @@
 use crate::*;
 
-impl App {
+
+#[derive(Debug)]
+pub struct AppFrontend {
+    counter: isize,
+    exit: bool
+}
+impl AppFrontend {
+    pub fn new() -> AppFrontend {
+        AppFrontend {
+            counter: 0,
+            exit: false
+        }
+    }
+}
+
+impl AppFrontend { 
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.render_frame(frame))?;
@@ -44,7 +59,7 @@ impl App {
 }
 
 
-impl Widget for &App {
+impl Widget for &AppFrontend {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title = Title::from(APP_TITLE.bold());
 
