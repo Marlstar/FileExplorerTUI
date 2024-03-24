@@ -1,4 +1,11 @@
+use std::path::PathBuf;
+
 use crate::*;
+
+pub enum FileType {
+    Directory,
+    File
+}
 
 pub struct AppBackend {
     cwd: Vec<String>,
@@ -19,11 +26,18 @@ impl AppBackend { // File commands
         return DirUtils::pathFromDirs(&self.cwd);
     }
 
-    fn listDir(&self) -> Result<Vec<String>, ()> {
-        
+    pub fn listDir(&self) -> Result<Vec<PathBuf>, ()> {
+        let mut files: Vec<PathBuf> = vec![];
 
-
-        return Err(())
+        let paths = match fs::read_dir(self.path()) {
+            Ok(a) => a,
+            Err(_) => {println!("Failed to read dir {}", self.path()); return Err(())}
+        };
+        for path in paths {
+            let p = path.expect("expected a valid path").path();
+            files.push(p);
+        }
+        return Ok(files)
     }
 }
 
@@ -46,6 +60,6 @@ impl DirUtils {
         for element in &dirs[1..dirs.len()] {
             s = format!("{}{}", s, format!("/{}", element))
         }
-        return s;
+        return s[..s.len()-1].to_string();
     }
 }

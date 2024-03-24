@@ -14,7 +14,7 @@ use ratatui::{
     widgets::{block::*, *},
 };
 
-use std::io::{self, stdout};
+use std::io::{self, stdout, Write};
 use std::fs::{self, File};
 
 use color_eyre::{
@@ -31,11 +31,16 @@ mod backend; use backend::*;
 pub const APP_TITLE: &str = " File Explorer ";
 pub const DEFAULT_FOLDER: &str = "C:/users/marle";
 
-fn main() {
-    let dirs = DirUtils::dirsFromPath(String::from(DEFAULT_FOLDER)).expect("failed to get dirs");
-    let path = DirUtils::pathFromDirs(&dirs);
-    println!("{:?}\n{}", dirs, path)
+fn main() -> Result<()> {
+    errors::install_hooks()?;
+    let app = match App::new() {
+        Ok(a) => a,
+        Err(_) => panic!("failed to create app")
+    };
+    println!("\n\n\n\n <===== FILE EXPLORER =====>");
+    println!("{:#?}", app.backend.listDir());
 
+    return Ok(());
 }
 fn main_() -> Result<()> {
     errors::install_hooks()?;
