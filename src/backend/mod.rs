@@ -28,6 +28,14 @@ impl App { // File commands
         return Ok(files)
     }
 
+    pub fn countItems(&self) -> Result<usize, bool> {
+        let r = self.listDir();
+        match r {
+            Ok(a) => return Ok(a.len()),
+            Err(_) => return Err(false)
+        }
+    }
+
     pub fn getType(&self, filetype: FileType) -> Result<Vec<PathBuf>, ()> {
         let files = self.listDir()?;
         let mut output: Vec<PathBuf> = vec![];
@@ -67,6 +75,7 @@ impl App { // Directory traversal
                 let desPath = format!("{}/{}", self.cwd(), folder.as_str());
                 if Path::new(desPath.as_str()).exists() {
                     self.cwd.push(folder);
+                    self.selected = 0;
                     return Ok(())
                 }
                 else {
@@ -74,6 +83,7 @@ impl App { // Directory traversal
                 }
             }
         }
+        
     }
 }
 

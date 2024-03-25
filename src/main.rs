@@ -33,8 +33,6 @@ pub const DEFAULT_FOLDER: &str = "C:/Users/marle/Documents/CodingProjects/FileEx
 
 fn main() -> Result<()> {
     errors::install_hooks()?;
-    println!("\n\n\n\n\n\n");
-
     let mut terminal = match tui::init() {
         Ok(a) => a,
         Err(_) => panic!("failed to hook terminal")
@@ -51,18 +49,21 @@ fn main() -> Result<()> {
 pub struct App {
     // Frontend
     pub exit: bool,
+    selected: usize,
 
     // Backend
     cwd: Vec<String>,
     home: String
 }
 impl App {
+    /// Returns a new `App`
     pub fn new() -> Result<App, bool> {
         let a = App {
             
 
             // Frontend
             exit: false,
+            selected: 0,
 
             // Backend
             cwd: match DirUtils::dirsFromPath(String::from(DEFAULT_FOLDER)) {

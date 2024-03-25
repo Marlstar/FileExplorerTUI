@@ -14,11 +14,7 @@ impl App {
     pub fn handle_events(&mut self) -> io::Result<()> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press { // Falling edge detector
-                use KeyCode::*;
-
-                match key.code { // * Keypresses go here
-                    _ => {}
-                }
+                self.handle_key_event(key);
             }
         }
 
@@ -26,8 +22,11 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
+        use KeyCode::*;
         match key_event.code {
-            KeyCode::Char('q') => self.quit(),
+            Char('q') => self.quit(),
+            Down => self.navigateDown(),
+            Up => self.navigateUp(),
             _ => {}
         }
     }
@@ -57,6 +56,24 @@ impl App { // Render chunks
             .render(area, buf);
     }
 
+    fn navigateUp(&mut self) {
+        // todo: add wrapping?
+        if self.selected > usize::MIN {
+            self.selected -= 1;
+        }
+    }
+    fn navigateDown(&mut self) {
+        // todo: add wrapping?
+        if self.selected <= match self.countItems() {
+            Ok(a) => a-1,
+            Err(_) => return
+        }
+        {
+            self.selected += 1;
+        }
+    }
+
+
     #[allow(unused_variables)]
     fn render_files(&self, area: Rect, buf: &mut Buffer) {
         // Styles
@@ -67,7 +84,7 @@ impl App { // Render chunks
         let fileStyle_selected = Style::new().light_green().on_gray();
         let fileStyle_unselected = Style::new().light_green();
 
-        // Code
+        // Get raw items
         let files = match self.getType(FileType::File) {
             Ok(a) => a,
             Err(_) => {
@@ -83,9 +100,21 @@ impl App { // Render chunks
             }
         };
 
-        let mut text_widgets: Vec<Line> = vec![];
 
+        let parentFolderWidget = Line::styled("..",
+            match self.selected {
+                0 => folderStyle_selected,
+                _ => folderStyle_unselected
+            });
+
+        // Vectors to store the items in
+        let mut text_widgets: Vec<Line> = vec![parentFolderWidget]; // Starts with parent directory, others added in following loops
+        let mut items: Vec<(String, FileType)> = vec![(String::from(".."), FileType::Directory)]; // 
+
+        let mut currentElement = 0;
+        // Create widget and info for each item
         for dir in directories {
+            currentElement += 1;
             let name: String = match dir.file_name() {
                 Some(a) => match a.to_str() {
                     Some(a) => a.to_string(),
@@ -93,10 +122,12 @@ impl App { // Render chunks
                 },
                 None => continue
             };
-            
-            text_widgets.push(Line::styled(name, folderStyle_unselected));
-        };
+
+            text_widgets.push(Line::styled(name.clone(), if self.selected == currentElement {folderStyle_selected} else {folderStyle_unselected}));
+            items.push((name, FileType::Directory));
+        }
         for file in files {
+            currentElement += 1;
             let name: String = match file.file_name() {
                 Some(a) => match a.to_str() {
                     Some(a) => a.to_string(),
@@ -105,10 +136,17 @@ impl App { // Render chunks
                 None => continue
             };
             
-            text_widgets.push(Line::styled(name, fileStyle_unselected));
+            text_widgets.push(Line::styled(name.clone(), if self.selected == currentElement {fileStyle_selected} else {fileStyle_unselected}));
+            items.push((name, FileType::File));
         }
 
         Paragraph::new(text_widgets)
+            .block(Block::new().borders(Borders::ALL))
+            .render(area, buf);
+    }
+
+    fn render_file_info(&self, area: Rect, buf: &mut Buffer) {
+        Paragraph::new(format!("Info Panel\nSelected: {}\nTotal Items: {}", self.selected, self.countItems().unwrap()))
             .block(Block::new().borders(Borders::ALL))
             .render(area, buf);
     }
@@ -130,11 +168,14 @@ impl Widget for &mut App {
         ]);
         let [file_area, file_info_area] = horizontal_inner.areas(inner_area);
 
-        // File Info Area
+        
+        // Render the different parts of the application
+        // Header
         self.render_header(header_area, buf);
-
+        // Main application content
         self.render_files(file_area, buf);
-
+        self.render_file_info(file_info_area, buf);
+        // Footer
         self.render_footer(footer_area, buf);
     }
 }
