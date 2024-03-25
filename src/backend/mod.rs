@@ -7,31 +7,19 @@ pub enum FileType {
     File
 }
 
-pub struct AppBackend {
-    cwd: Vec<String>,
-    home: String
-}
-impl AppBackend {
-    pub fn new() -> AppBackend {
-        AppBackend {
-            cwd: vec![String::from(DEFAULT_FOLDER)],
-            home: String::from(DEFAULT_FOLDER)
-        }
-    }
-}
 
 
-impl AppBackend { // File commands
-    pub fn path(&self) -> String {
+impl App { // File commands
+    pub fn cwd(&self) -> String {
         return DirUtils::pathFromDirs(&self.cwd);
     }
 
     pub fn listDir(&self) -> Result<Vec<PathBuf>, ()> {
         let mut files: Vec<PathBuf> = vec![];
 
-        let paths = match fs::read_dir(self.path()) {
+        let paths = match fs::read_dir(self.cwd()) {
             Ok(a) => a,
-            Err(_) => {println!("Failed to read dir {}", self.path()); return Err(())}
+            Err(_) => {println!("Failed to read dir {}", self.cwd()); return Err(())}
         };
         for path in paths {
             let p = path.expect("expected a valid path").path();
@@ -67,7 +55,7 @@ pub enum CDError {
     InvalidPath
 }
 
-impl AppBackend { // Directory traversal
+impl App { // Directory traversal
     pub fn cd(&mut self, folder: String) -> Result<(), CDError> {
         match folder.as_str() {
             ".." => {
@@ -76,7 +64,7 @@ impl AppBackend { // Directory traversal
                 return Ok(());
             },
             _ => {
-                let desPath = format!("{}/{}", self.path(), folder.as_str());
+                let desPath = format!("{}/{}", self.cwd(), folder.as_str());
                 if Path::new(desPath.as_str()).exists() {
                     self.cwd.push(folder);
                     return Ok(())

@@ -1,31 +1,11 @@
-use std::rc::Rc;
+use std::{ffi::OsStr, rc::Rc};
 
 use crate::*;
 
 
-#[derive(Debug)]
-pub struct AppFrontend {
-    exit: bool
-}
-impl AppFrontend {
-    pub fn new() -> AppFrontend {
-        AppFrontend {
-            exit: false
-        }
-    }
-}
 
-impl AppFrontend { 
-    pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
-        while !self.exit {
-            self.draw(terminal).wrap_err("failed to draw to terminal")?;
-            self.handle_events().wrap_err("handling events failed")?;
-        }
-
-        return Ok(());
-    }
-
-    fn draw(&self, terminal: &mut Terminal<impl Backend>) -> Result<()> {
+impl App { 
+    pub fn draw(&mut self, terminal: &mut Terminal<impl Backend>) -> Result<()> {
         terminal.draw(|frame| frame.render_widget(self, frame.size()))?;
 
         return Ok(());
@@ -57,7 +37,7 @@ impl AppFrontend {
     }
 }
 
-impl AppFrontend { // Render chunks
+impl App { // Render chunks
     fn render_header(&self, area: Rect, buf: &mut Buffer) {
         Line::raw(" File Explorer ")
             .centered()
@@ -77,10 +57,64 @@ impl AppFrontend { // Render chunks
             .render(area, buf);
     }
 
-    fn render_files
+    #[allow(unused_variables)]
+    fn render_files(&self, area: Rect, buf: &mut Buffer) {
+        // Styles
+        let errorFiller = Line::styled("ERROR", Style::new().red());
+
+        let folderStyle_selected = Style::new().cyan().on_gray();
+        let folderStyle_unselected = Style::new().cyan();
+        let fileStyle_selected = Style::new().light_green().on_gray();
+        let fileStyle_unselected = Style::new().light_green();
+
+        // Code
+        let files = match self.getType(FileType::File) {
+            Ok(a) => a,
+            Err(_) => {
+                errorFiller.clone().render(area, buf);
+                return;
+            }
+        };
+        let directories = match self.getType(FileType::Directory) {
+            Ok(a) => a,
+            Err(_) => {
+                errorFiller.clone().render(area, buf);
+                return;
+            }
+        };
+
+        let mut text_widgets: Vec<Line> = vec![];
+
+        for dir in directories {
+            let name: String = match dir.file_name() {
+                Some(a) => match a.to_str() {
+                    Some(a) => a.to_string(),
+                    None => continue
+                },
+                None => continue
+            };
+            
+            text_widgets.push(Line::styled(name, folderStyle_unselected));
+        };
+        for file in files {
+            let name: String = match file.file_name() {
+                Some(a) => match a.to_str() {
+                    Some(a) => a.to_string(),
+                    None => continue
+                },
+                None => continue
+            };
+            
+            text_widgets.push(Line::styled(name, fileStyle_unselected));
+        }
+
+        Paragraph::new(text_widgets)
+            .block(Block::new().borders(Borders::ALL))
+            .render(area, buf);
+    }
 }
 
-impl Widget for &AppFrontend {
+impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         use Constraint::*;
 
@@ -92,11 +126,14 @@ impl Widget for &AppFrontend {
 
         // Main Chunks
         let horizontal_inner = Layout::horizontal([
-            Min(40), Max(20)
+            Min(40), Max(50)
         ]);
         let [file_area, file_info_area] = horizontal_inner.areas(inner_area);
 
+        // File Info Area
         self.render_header(header_area, buf);
+
+        self.render_files(file_area, buf);
 
         self.render_footer(footer_area, buf);
     }

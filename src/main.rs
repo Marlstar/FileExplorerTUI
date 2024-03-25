@@ -29,45 +29,72 @@ mod frontend; use frontend::*;
 mod backend; use backend::*;
 
 pub const APP_TITLE: &str = " File Explorer ";
-pub const DEFAULT_FOLDER: &str = "C:/users/marle";
+pub const DEFAULT_FOLDER: &str = "C:/Users/marle/Documents/CodingProjects/FileExplorerTUI/TUI_test_environment";
 
 fn main() -> Result<()> {
     errors::install_hooks()?;
     println!("\n\n\n\n\n\n");
 
+    let mut terminal = match tui::init() {
+        Ok(a) => a,
+        Err(_) => panic!("failed to hook terminal")
+    };
     let mut app = match App::new() {
         Ok(a) => a,
         Err(_) => panic!("failed to create app")
     };
-    let app_result: Result<()> = app.runFrontend();
+    let app_result: Result<()> = app.runFrontend(&mut terminal);
     return app_result;
 }
 
 
 pub struct App {
-    pub terminal: tui::Tui,
-    frontend: AppFrontend,
-    backend: AppBackend
+    // Frontend
+    pub exit: bool,
+
+    // Backend
+    cwd: Vec<String>,
+    home: String
 }
 impl App {
-    pub fn new() -> Result<App, ()> {
+    pub fn new() -> Result<App, bool> {
         let a = App {
-            terminal: match tui::init() {
+            
+
+            // Frontend
+            exit: false,
+
+            // Backend
+            cwd: match DirUtils::dirsFromPath(String::from(DEFAULT_FOLDER)) {
                 Ok(a) => a,
-                Err(_) => return Err(())
+                Err(_) => return Err(false)
             },
-            frontend: AppFrontend::new(),
-            backend: AppBackend::new()
+            home: String::from(DEFAULT_FOLDER)
         };
         Ok(a)
     }
 }
 
+// & //////////////////////////
+// & ////////FRONTEND /////////
+// & //////////////////////////
 impl App {
-    pub fn runFrontend(&mut self) -> Result<()> {
-        let app_result = self.frontend.run(&mut self.terminal);
+    pub fn runFrontend(&mut self, terminal: &mut Terminal<impl Backend>) -> Result<()> {
+        let app_result: Result<()>;
+        while !self.exit {
+            self.draw(terminal).wrap_err("failed to draw to terminal")?;
+            self.handle_events().wrap_err("handling events failed")?;
+        };
+        app_result = Ok(());
+
+
+
         let _ = tui::restore();
 
         return app_result;
     }
 }
+
+// & ////////////////////////
+// & ///////BACKEND /////////
+// & ////////////////////////
