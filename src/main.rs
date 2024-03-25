@@ -33,17 +33,7 @@ pub const DEFAULT_FOLDER: &str = "C:/users/marle";
 
 fn main() -> Result<()> {
     errors::install_hooks()?;
-    let app = match App::new() {
-        Ok(a) => a,
-        Err(_) => panic!("failed to create app")
-    };
-    println!("\n\n\n\n <===== FILE EXPLORER =====>");
-    println!("{:#?}", app.backend.listDir());
-
-    return Ok(());
-}
-fn main_() -> Result<()> {
-    errors::install_hooks()?;
+    println!("\n\n\n\n\n\n");
 
     let mut app = match App::new() {
         Ok(a) => a,

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::*;
 
@@ -39,27 +39,70 @@ impl AppBackend { // File commands
         }
         return Ok(files)
     }
+
+    pub fn getType(&self, filetype: FileType) -> Result<Vec<PathBuf>, ()> {
+        let files = self.listDir()?;
+        let mut output: Vec<PathBuf> = vec![];
+        for file in files {
+            match filetype {
+                FileType::File => {
+                    if file.is_file() {
+                        output.push(file);
+                    }
+                },
+                FileType::Directory => {
+                    if file.is_dir() {
+                        output.push(file);
+                    }
+                }
+            }
+        }
+
+        return Ok(output)
+    }
 }
+
+
+pub enum CDError {
+    InvalidPath
+}
+
+impl AppBackend { // Directory traversal
+    pub fn cd(&mut self, folder: String) -> Result<(), CDError> {
+        match folder.as_str() {
+            ".." => {
+                if self.cwd.len() <= 1 {return Err(CDError::InvalidPath)};
+                self.cwd.pop();
+                return Ok(());
+            },
+            _ => {
+                let desPath = format!("{}/{}", self.path(), folder.as_str());
+                if Path::new(desPath.as_str()).exists() {
+                    self.cwd.push(folder);
+                    return Ok(())
+                }
+                else {
+                    return Err(CDError::InvalidPath)
+                }
+            }
+        }
+    }
+}
+
 
 
 pub struct DirUtils {}
 impl DirUtils {
     pub fn dirsFromPath(path: String) -> Result<Vec<String>, ()> {
         let chunks_str: Vec<&str> = path.split('/').collect();
-        let mut chunks: Vec<String> =  chunks_str.iter().map(|&x| String::from(x)).collect();
-        let drive: String = {
-            let c = chunks[0].as_str();
-
-            String::from(match c.chars().nth(0) {Some(a) => a, None => return Err(())})
-        };
-        chunks[0] = drive;
+        let chunks: Vec<String> =  chunks_str.iter().map(|&x| String::from(x)).collect();
         return Ok(chunks);
     }
     pub fn pathFromDirs(dirs: &Vec<String>) -> String {
-        let mut s = format!("{}:", dirs[0]);
+        let mut s = format!("{}", dirs[0]);
         for element in &dirs[1..dirs.len()] {
             s = format!("{}{}", s, format!("/{}", element))
         }
-        return s[..s.len()-1].to_string();
+        return s;
     }
 }

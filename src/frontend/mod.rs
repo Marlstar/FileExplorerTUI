@@ -1,15 +1,15 @@
+use std::rc::Rc;
+
 use crate::*;
 
 
 #[derive(Debug)]
 pub struct AppFrontend {
-    counter: isize,
     exit: bool
 }
 impl AppFrontend {
     pub fn new() -> AppFrontend {
         AppFrontend {
-            counter: 0,
             exit: false
         }
     }
@@ -18,79 +18,86 @@ impl AppFrontend {
 impl AppFrontend { 
     pub fn run(&mut self, terminal: &mut tui::Tui) -> Result<()> {
         while !self.exit {
-            terminal.draw(|frame| self.render_frame(frame))?;
+            self.draw(terminal).wrap_err("failed to draw to terminal")?;
             self.handle_events().wrap_err("handling events failed")?;
         }
+
         return Ok(());
     }
 
-    pub fn render_frame(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.size());
+    fn draw(&self, terminal: &mut Terminal<impl Backend>) -> Result<()> {
+        terminal.draw(|frame| frame.render_widget(self, frame.size()))?;
+
+        return Ok(());
     }
 
     pub fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event)
-                if key_event.kind == KeyEventKind::Press => {
-                    self.handle_key_event(key_event);
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Press { // Falling edge detector
+                use KeyCode::*;
+
+                match key.code { // * Keypresses go here
+                    _ => {}
                 }
-            _ => {}
-        };
+            }
+        }
 
         return Ok(());
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Up => self.change_counter(1),
-            KeyCode::Down => self.change_counter(-1),
+            KeyCode::Char('q') => self.quit(),
             _ => {}
         }
     }
 
-    fn change_counter(&mut self, num: isize) {
-        self.counter += num;
-    }
-
-    fn exit(&mut self) {
+    fn quit(&mut self) {
         self.exit = true;
     }
 }
 
+impl AppFrontend { // Render chunks
+    fn render_header(&self, area: Rect, buf: &mut Buffer) {
+        Line::raw(" File Explorer ")
+            .centered()
+            .render(area, buf)
+    }
+
+    fn render_footer(&self, area: Rect, buf: &mut Buffer) {
+        Line::from(vec![
+            Span::raw(" Navigation "),
+            Span::styled("<Up/Down>", Style::new().light_blue()),
+            Span::raw(" | Interact "),
+            Span::styled("<Enter>", Style::new().light_blue()),
+            Span::raw(" | Quit "),
+            Span::styled("<Q> ", Style::new().light_blue())
+        ])
+            .centered()
+            .render(area, buf);
+    }
+
+    fn render_files
+}
 
 impl Widget for &AppFrontend {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from(APP_TITLE.bold());
+        use Constraint::*;
 
-        let instructions = Title::from(Line::from(vec![
-            " Decrement ".into(),
-            "<Down>".blue().bold(),
-            " Increment ".into(),
-            "<Up>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]));
+        // Vertical chunks
+        let vertical = Layout::vertical([
+            Length(1), Min(0), Length(1) // Lengths are 1 line each and the Min(0) just makes a dynamic area in the middle
+        ]);
+        let [header_area, inner_area, footer_area] = vertical.areas(area);
 
-        let block = Block::default()
-            .title(title.alignment(Alignment::Center))
-            .title(
-                instructions
-                    .alignment(Alignment::Center)
-                    .position(Position::Bottom),
-            )
-            .borders(Borders::ALL)
-            .border_set(border::THICK);
+        // Main Chunks
+        let horizontal_inner = Layout::horizontal([
+            Min(40), Max(20)
+        ]);
+        let [file_area, file_info_area] = horizontal_inner.areas(inner_area);
 
-            let counter_text = Text::from(vec![Line::from(vec![
-                "Value: ".into(),
-                self.counter.to_string().yellow(),
-            ])]);
+        self.render_header(header_area, buf);
 
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        self.render_footer(footer_area, buf);
     }
-    
 }
