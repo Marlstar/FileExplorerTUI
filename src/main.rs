@@ -50,6 +50,7 @@ pub struct App {
     // Frontend
     pub exit: bool,
     selected: usize,
+    currentItems: Vec<(String, FileType)>,
 
     // Backend
     cwd: Vec<String>,
@@ -64,6 +65,7 @@ impl App {
             // Frontend
             exit: false,
             selected: 0,
+            currentItems: vec![],
 
             // Backend
             cwd: match DirUtils::dirsFromPath(String::from(DEFAULT_FOLDER)) {

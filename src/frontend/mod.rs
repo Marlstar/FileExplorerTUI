@@ -27,6 +27,7 @@ impl App {
             Char('q') => self.quit(),
             Down => self.navigateDown(),
             Up => self.navigateUp(),
+            Enter => {let _ = self.itemInteract();},
             _ => {}
         }
     }
@@ -73,9 +74,21 @@ impl App { // Render chunks
         }
     }
 
+    fn itemInteract(&mut self) -> Result<(), bool> {
+        let item = &self.currentItems[self.selected];
+        if item.1 == FileType::Directory {
+            match self.cd(item.0.clone()) {
+                Ok(_) => {},
+                Err(_) => return Err(false)
+            };
+        }
+
+        return Ok(());
+    }
+
 
     #[allow(unused_variables)]
-    fn render_files(&self, area: Rect, buf: &mut Buffer) {
+    fn render_files(&mut self, area: Rect, buf: &mut Buffer) {
         // Styles
         let errorFiller = Line::styled("ERROR", Style::new().red());
 
@@ -109,7 +122,7 @@ impl App { // Render chunks
 
         // Vectors to store the items in
         let mut text_widgets: Vec<Line> = vec![parentFolderWidget]; // Starts with parent directory, others added in following loops
-        let mut items: Vec<(String, FileType)> = vec![(String::from(".."), FileType::Directory)]; // 
+        self.currentItems = vec![(String::from(".."), FileType::Directory)]; // 
 
         let mut currentElement = 0;
         // Create widget and info for each item
@@ -124,7 +137,7 @@ impl App { // Render chunks
             };
 
             text_widgets.push(Line::styled(name.clone(), if self.selected == currentElement {folderStyle_selected} else {folderStyle_unselected}));
-            items.push((name, FileType::Directory));
+            self.currentItems.push((name, FileType::Directory));
         }
         for file in files {
             currentElement += 1;
@@ -137,7 +150,7 @@ impl App { // Render chunks
             };
             
             text_widgets.push(Line::styled(name.clone(), if self.selected == currentElement {fileStyle_selected} else {fileStyle_unselected}));
-            items.push((name, FileType::File));
+            self.currentItems.push((name, FileType::File));
         }
 
         Paragraph::new(text_widgets)
@@ -146,7 +159,7 @@ impl App { // Render chunks
     }
 
     fn render_file_info(&self, area: Rect, buf: &mut Buffer) {
-        Paragraph::new(format!("Info Panel\nSelected: {}\nTotal Items: {}", self.selected, self.countItems().unwrap()))
+        Paragraph::new(format!("Status Panel\nSelected: {}\nTotal Items: {}\nCWD: {}", self.selected, match self.countItems() {Ok(a)=>a,Err(_)=>0}, self.cwd()))
             .block(Block::new().borders(Borders::ALL))
             .render(area, buf);
     }

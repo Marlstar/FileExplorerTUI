@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::*;
 
+#[derive(Eq, PartialEq, Clone)]
 pub enum FileType {
     Directory,
     File
